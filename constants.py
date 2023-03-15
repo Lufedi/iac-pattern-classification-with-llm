@@ -10,3 +10,12 @@ CODE2VEC_DIR = '/Users/lfeliped/pipe/master/premodels/code2vec'
 
 
 TRAIN_DIRS = ['train', 'test', 'val']
+
+models = {
+    "code2vec": {
+        "dir": CODE2VEC_DIR
+    },
+    "code2seq": {
+        "dir": '/Users/lfeliped/pipe/master/premodels/code2seq'
+    }
+}

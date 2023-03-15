@@ -46,17 +46,19 @@ def remove_pipeline_data():
     for dir in constants.TRAIN_DIRS:
         shutil.rmtree(f"{constants.TRAIN_FOLDER}/{dir}")
 
-def generate_ast_files():
-    os.system('cd /users/lfeliped/pipe/master/premodels/code2vec/ && sh /users/lfeliped/pipe/master/premodels/code2vec/preprocess.sh ast')
+def generate_ast_files(model_dir):
+    os.system(f"cd {model_dir} && sh {model_dir}/preprocess.sh ast")
 
-def generate_model_files():
-    os.system('cd /users/lfeliped/pipe/master/premodels/code2vec/ && sudo sh /users/lfeliped/pipe/master/premodels/code2vec/preprocess.sh')
+def generate_model_files(model_dir):
+    os.system(f"cd {model_dir} && sh {model_dir}/preprocess.sh")
 
-def train_model():
-    os.system('cd /users/lfeliped/pipe/master/premodels/code2vec/ && sudo sh /users/lfeliped/pipe/master/premodels/code2vec/train.sh')
-def add_labels_to_asts(label):
+def train_model(model_dir):
+    os.system(f"cd {model_dir} && sh {model_dir}/train.sh")
+
+def add_labels_to_asts(model_dir, label):
     for train_file_name in constants.TRAIN_DIRS:
-        file_name = f"{constants.CODE2VEC_DIR}/{constants.DATASET}.{train_file_name}.raw.txt"
+        if train_file_name == 'test': continue
+        file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt"
         with open(file_name, 'r') as file:
             lines = file.readlines()
             new_lines = []
@@ -66,24 +68,27 @@ def add_labels_to_asts(label):
                 ll = str.join(" ", data)
                 new_lines.append(ll)
         string_to_write = str.join("", new_lines)
-        file_name = f"{constants.CODE2VEC_DIR}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
+        file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
         with open(file_name, "w") as new_file:
             new_file.write(string_to_write)
 
-def merge_files(labels):
+def merge_files(model_dir, labels):
     for train_file_name in constants.TRAIN_DIRS:
-        file_name_prefix = f"{constants.CODE2VEC_DIR}/{constants.DATASET}.{train_file_name}.raw.txt"
+        if train_file_name == 'test': continue
+        file_name_prefix = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt"
         with open(file_name_prefix, 'wb') as ffi:
             for label in labels:
-                ffi.write(b"\n")
-                with open(f"{file_name_prefix}:{label}", 'rb') as labeled_file:
-                    shutil.copyfileobj(labeled_file, ffi)
+                # ffi.write(b"\n")
+                f_name = f"{file_name_prefix}:{label}"
+                if os.path.exists(f_name):
+                    with open(f_name, 'rb') as labeled_file:
+                        shutil.copyfileobj(labeled_file, ffi)
 
-def remove_temporary_label_files(labels):
+def remove_temporary_label_files(model_dir, labels):
     for train_file_name in constants.TRAIN_DIRS:
         for label in labels:
-            file_name = f"{constants.CODE2VEC_DIR}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
-            os.remove(file_name)
+            file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
+            if os.path.exists(file_name): os.remove(file_name)
 
 
 def main():
@@ -97,21 +102,23 @@ def main():
     5. train the model
     6. test the model
     '''
-
-
-    map_archkey_to_files = read_labels(constants.LABELS_FILE)
-    if "unlabeled" in map_archkey_to_files:
-        del map_archkey_to_files["unlabeled"]
-    for arch_key in map_archkey_to_files:
-        print("Generating files for", arch_key)
-        copy_files_to_train_folders(constants.REPO_DIR, map_archkey_to_files[arch_key], constants.TRAIN_FOLDER)
-        generate_ast_files()
-        break
-        # add_labels_to_asts(arch_key)
-    # merge_files(map_archkey_to_files.keys())
-    generate_model_files()
-    # remove_temporary_label_files(map_archkey_to_files.keys())
-    remove_pipeline_data()
+    for model in constants.models:
+        if model == 'code2seq': continue
+        model_dir = constants.models[model]["dir"]
+        print("Generating data for model", model)
+        map_archkey_to_files = read_labels(constants.LABELS_FILE)
+        if "unlabeled" in map_archkey_to_files:
+            del map_archkey_to_files["unlabeled"]
+        for arch_key in map_archkey_to_files:
+            print("Generating files for ", model,  arch_key)
+            copy_files_to_train_folders(constants.REPO_DIR, map_archkey_to_files[arch_key], constants.TRAIN_FOLDER)
+            generate_ast_files(model_dir)
+            add_labels_to_asts(model_dir, arch_key)
+        merge_files(model_dir, map_archkey_to_files.keys())
+        generate_model_files(model_dir)
+        remove_temporary_label_files(model_dir, map_archkey_to_files.keys())
+        remove_pipeline_data()
+        print("Data ready for", model)
 main()
 # add_labels_to_asts('piperules')
 
