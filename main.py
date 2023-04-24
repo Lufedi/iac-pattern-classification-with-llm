@@ -57,24 +57,25 @@ def train_model(model_dir):
 
 def add_labels_to_asts(model_dir, label):
     for train_file_name in constants.TRAIN_DIRS:
-        if train_file_name == 'test': continue
         file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt"
         with open(file_name, 'r') as file:
-            lines = file.readlines()
-            new_lines = []
-            for line in lines:
-                data = line.split(" ")
-                data[0] = label
-                ll = str.join(" ", data)
-                new_lines.append(ll)
-        string_to_write = str.join("", new_lines)
-        file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
-        with open(file_name, "w") as new_file:
-            new_file.write(string_to_write)
+            if train_file_name == 'test':
+                string_to_write = file.read()
+            else:
+                lines = file.readlines()
+                new_lines = []
+                for line in lines:
+                    data = line.split(" ")
+                    data[0] = label
+                    ll = str.join(" ", data)
+                    new_lines.append(ll)
+                string_to_write = str.join("", new_lines)
+            file_name = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt:{label}"
+            with open(file_name, "w") as new_file:
+                new_file.write(string_to_write)
 
 def merge_files(model_dir, labels):
     for train_file_name in constants.TRAIN_DIRS:
-        if train_file_name == 'test': continue
         file_name_prefix = f"{model_dir}/{constants.DATASET}.{train_file_name}.raw.txt"
         with open(file_name_prefix, 'wb') as ffi:
             for label in labels:
@@ -102,22 +103,28 @@ def main():
     5. train the model
     6. test the model
     '''
+
+
     for model in constants.models:
-        if model == 'code2seq': continue
+        if model == 'code2vec': continue
         model_dir = constants.models[model]["dir"]
         print("Generating data for model", model)
         map_archkey_to_files = read_labels(constants.LABELS_FILE)
         if "unlabeled" in map_archkey_to_files:
+            for file in map_archkey_to_files["unlabeled"]:
+                map_archkey_to_files["event-driven"].append(file)
             del map_archkey_to_files["unlabeled"]
+
         for arch_key in map_archkey_to_files:
             print("Generating files for ", model,  arch_key)
             copy_files_to_train_folders(constants.REPO_DIR, map_archkey_to_files[arch_key], constants.TRAIN_FOLDER)
             generate_ast_files(model_dir)
             add_labels_to_asts(model_dir, arch_key)
+            remove_pipeline_data()
         merge_files(model_dir, map_archkey_to_files.keys())
         generate_model_files(model_dir)
         remove_temporary_label_files(model_dir, map_archkey_to_files.keys())
-        remove_pipeline_data()
+        train_model(model_dir)
         print("Data ready for", model)
 main()
 # add_labels_to_asts('piperules')
