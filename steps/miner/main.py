@@ -3,28 +3,32 @@ import codecs
 import os
 import time
 import urllib.parse
-
+import logging
 
 from datetime import datetime, timedelta
 
 from requests.utils import requote_uri
 
 from config import headers
+
 from core.Parser import Parser
 from core.sendRequest import requestPage
+
+import constants
 
 os.system('cls' if os.name == 'nt' else 'clear')
 codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else None)
 
+logger = logging.getLogger(__name__)
 
-MAX_PAGE = 2
+
 DAYS=120
 class GitMiner(object):
-
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                        datefmt='%m/%d/%Y %H:%M:%S',
+                        level=logging.INFO)
     def __init__(self):
         self.seen_links = set()
-
-
         # query = urllib.parse.quote(f"amazon.awscdk language:java")
         # self.search_term = requote_uri(f"/search/code?q={query}&per_page=100")
         query = urllib.parse.quote(f"aws cdk created:FROM_DATE..TO_DATE language:java")
@@ -41,8 +45,20 @@ class GitMiner(object):
             },
             "typescript": {
                 "repositories": self.std_search,
-                "code":  self.create_paths("aws-cdk-lib")           }
-
+                "code":  self.create_paths("aws-cdk-lib")
+            },
+            "go": {
+                "repositories": self.std_search,
+                "code":  self.create_paths("aws-cdk-go")
+            },
+            "python": {
+                "repositories": self.std_search,
+                "code":  self.create_paths("aws_cdk")
+            },
+            "javascript": {
+                "repositories": self.std_search,
+                "code":  self.create_paths("aws-cdk-go")
+            }
         }
 
     def create_paths(self, term):
@@ -61,7 +77,7 @@ class GitMiner(object):
                 ]
 
     def persist_repos(self, repos, file):
-        print("peristing repos", len(repos))
+        logger.info("peristing repos %d ", len(repos))
         for link in repos:
             if file is not None:
                 file.write(link)
@@ -76,7 +92,7 @@ class GitMiner(object):
             else: return item['html_url']
         if retries >= 3:
             return False
-        print("total repo " , len(data["items"]))
+        logger.info("total repo %d" , len(data["items"]))
         if not "items" in data:
             return self.save_repos(data, file, retries + 1)
         repo_links = map(map_to_repo, data['items'])
@@ -95,35 +111,35 @@ class GitMiner(object):
             file.flush()
 
     def search_page(self, url_search, headers_github, output_file):
-        for i in range(1, MAX_PAGE):
+        for i in range(1, constants.MAX_PAGE):
             try:
                 data, status = requestPage(url_search + "&page=" + str(i), headers_github )
-                print("status", status)
+                logger.info("status %s", status)
                 if status == "OK":
                     if len(data["items"]) == 0:
-                        print("No results jumping")
+                        logger.info("No results jumping")
                         break
                     repos_saved = self.save_repos(data, output_file, 0)
                     if not repos_saved:
                        self.logError(f'error saving repos from page {i}')
                 else:
-                    print("Page failed ", i)
+                    logger.info("Page failed  %d", i)
                     break
                 time.sleep(10)
             except:
-                print("Error in page i for search term ", i, url_search )
+                logger.info("Error in page %d for search term  $s", i, url_search )
                 self.logError(f'error saving repos from page {i} in search {url_search}')
 
 
     def send_query(self, headers_github, output_file, language):
         for search_type in self.queries[language]:
             for search_term in self.queries[language][search_type]:
-                print("searching for", search_type, search_term, language)
+                logger.info("searching for %s %s %s", search_type, search_term, language)
                 time.sleep(5)
                 if search_type == 'repositories':
                     for d in range(2):
                         url_search = self.build_url(search_type, search_term,  language, d)
-                        print("searching for", url_search)
+                        logger.info("searching for %s", url_search)
                         self.search_page(url_search, headers_github, output_file)
                 else:
                     url_search = self.build_url(search_type, search_term, language)
@@ -139,7 +155,7 @@ class GitMiner(object):
             top_str = top.strftime("%Y-%m-%d")
             query += f" created:{bottom_str}..{top_str}"
         query += f" language:{language}"
-        print(query)
+        logger.info(query)
         query = urllib.parse.quote(query, safe='')
         query = requote_uri(f"/search/{search_type}?q={query}&per_page=100")
         return Parser.GITHUB_URL + query
@@ -152,11 +168,11 @@ class GitMiner(object):
         headers_github = headers.get_headers(url_search)
         headers_github['Accept'] = 'application/vnd.github+json'
         headers_github['X-GitHub-Api-Version'] = '2022-11-28'
-        headers_github['Authorization'] = 'Bearer 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'
+        headers_github['Authorization'] = f'Bearer {constants.BEARER_TOKEN}'
 
 
         for language in self.queries:
-            filename = f"{language}-repos.txt"
+            filename = f"{constants.RESULTS_OUTPUT}/{language}-repos.csv"
             with open(filename, 'a') as file:
                 self.parser = Parser(headers_github, file)
                 self.send_query(headers_github, file, language)
