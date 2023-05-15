@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "cloner"
+version = "0.1.0"
+description = ""
+authors = ["Felipe Diaz <luis.diaz-c@mail.escuelaing.edu.co>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+tqdm = "^4.65.0"
+gitpython = "^3.1.27"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
