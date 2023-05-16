@@ -4,8 +4,8 @@ import os
 class Labeler():
     def __init__(self) -> None:
         self.arch_styles = {}
-        self.extension = "py"
-        self.default_expr = "aws_cdk"
+        self.extension = ""
+        self.default_expr = ""
 
     def save_label(self, filepath, label, language):
         with open(f"{constants.labels_output}/{language}-labels.csv", 'a') as labels:

@@ -26,7 +26,6 @@ def do_request(url, headers):
         return (None, "ERROR")
 
 def requestPage(url, headers):
-    print("Querying: ", url)
     data, status = do_request(url, headers)
     if status == "ERROR":
         for _ in range(MAX_RESTRIES):

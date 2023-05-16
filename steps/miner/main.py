@@ -22,7 +22,7 @@ codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else No
 logger = logging.getLogger(__name__)
 
 
-DAYS=120
+DAYS=60
 class GitMiner(object):
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
@@ -39,12 +39,11 @@ class GitMiner(object):
                     "aws cdk"
                 ]
         self.queries =  {
-            "java": {
-               "repositories": self.std_search,
-               "code": self.create_paths("software.amazon.awscdk")
-            },
             "typescript": {
-                "repositories": self.std_search,
+                "repositories": [
+                    "aws cdk in:readme",
+                    "aws cdk"
+                ],
                 "code":  self.create_paths("aws-cdk-lib")
             },
             "go": {
@@ -58,7 +57,11 @@ class GitMiner(object):
             "javascript": {
                 "repositories": self.std_search,
                 "code":  self.create_paths("aws-cdk-go")
-            }
+            },
+            "java": {
+               "repositories": self.std_search,
+               "code": self.create_paths("software.amazon.awscdk")
+            },
         }
 
     def create_paths(self, term):
@@ -113,6 +116,7 @@ class GitMiner(object):
     def search_page(self, url_search, headers_github, output_file):
         for i in range(1, constants.MAX_PAGE):
             try:
+                logger.info("Querying: %s", url_search)
                 data, status = requestPage(url_search + "&page=" + str(i), headers_github )
                 logger.info("status %s", status)
                 if status == "OK":
@@ -137,7 +141,7 @@ class GitMiner(object):
                 logger.info("searching for %s %s %s", search_type, search_term, language)
                 time.sleep(5)
                 if search_type == 'repositories':
-                    for d in range(2):
+                    for d in range(DAYS):
                         url_search = self.build_url(search_type, search_term,  language, d)
                         logger.info("searching for %s", url_search)
                         self.search_page(url_search, headers_github, output_file)
@@ -147,7 +151,7 @@ class GitMiner(object):
 
     def build_url(self,search_type, search_term, language, days_passes=0):
         query = search_term
-        if search_type == 'repository':
+        if search_type == 'repositories':
             offset = 15
             bottom = datetime.today() - timedelta(days=days_passes * offset)
             top = bottom + timedelta(days=offset)
@@ -177,5 +181,9 @@ class GitMiner(object):
                 self.parser = Parser(headers_github, file)
                 self.send_query(headers_github, file, language)
         return
-GitMiner().start()
+
+try:
+    GitMiner().start()
+except KeyboardInterrupt:
+    exit()
 
