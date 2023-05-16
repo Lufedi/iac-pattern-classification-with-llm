@@ -1,5 +1,7 @@
 import os
 import constants
+from factory.labeler_factory import LabelerFactory
+from factory.labelers.labeler import Labeler
 
 arch_styles = {
     "java": {}}
@@ -28,35 +30,22 @@ def calculate_label(file_path: str):
     return results, all_found_keys, maxi_key
 
 def main():
-    os.chdir('../')
-    c_r = ['aws-roles']
     for language in arch_styles:
+        output_folder = f"{constants.labels_output}"
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
         repos_path = f"{constants.repos_dir}/{language}"
-        add_labels_by_functions(repos_path, language)
+        factory = LabelerFactory()
+        labeler = factory.create_labeler(language)
+        add_labels_by_functions(repos_path, language, labeler)
 
-def add_labels_by_functions(repos_path, language):
+def add_labels_by_functions(repos_path, language, labeler: Labeler):
     current_repos = set(os.listdir(repos_path))
     for repo_name in current_repos:
         print(repos_path, repo_name)
         for dirpath, dir, files in os.walk(f'{repos_path}/{repo_name}'):
             for file in files:
-                results = {key: 0 for key in arch_styles}
-                if file.endswith(".java"):
-                    file_path = os.path.join(dirpath, file)
-                    res, all_found, max_key = calculate_label(file_path)
-                    for key in arch_styles:
-                        results[key] += res[key]
-                    maxi_k, maxi_v = '', 0
-                    for key in results:
-                        if results[key] >= maxi_v:
-                            maxi_k = key
-                            maxi_v = results[key]
-                    if maxi_v == 0:
-                        is_service = search_str(file_path, "software.amazon.awscdk")
-                        if is_service: maxi_k = 'awsservice'
-                        else: maxi_k = 'unlabeled'
-
-                    save_label(file_path, maxi_k)
+                labeler.get_label(dirpath, file, language)
 
 def add_labels_by_repo(current_repos):
     for repo_name in current_repos:
