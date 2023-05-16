@@ -44,11 +44,12 @@ def iac_repos(target_csv_path: str, language: str):
                 downloaded_repos += 1
                 downloaded_count.write(f'{downloaded_repos}: {repo_url}\n')
                 downloaded_count.flush()
-            except GitCommandError:
+            except GitCommandError as e2:
+                downloaded_count.write(f"{repo_name}\n")
+                downloaded_count.flush()
                 pass
             except Exception as e:
                     print('Unknown exception:', e)
-            break
     print('Downloaded repos:', downloaded_repos)
 
 def main():
