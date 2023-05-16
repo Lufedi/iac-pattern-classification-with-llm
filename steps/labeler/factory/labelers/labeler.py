@@ -1,8 +1,11 @@
 import constants
+import os
 
 class Labeler():
     def __init__(self) -> None:
         self.arch_styles = {}
+        self.extension = "py"
+        self.default_expr = "aws_cdk"
 
     def save_label(self, filepath, label, language):
         with open(f"{constants.labels_output}/{language}-labels.csv", 'a') as labels:
@@ -47,5 +50,21 @@ class Labeler():
                 return False
 
 
-    def get_label(self, file_path, file, language):
-        pass
+
+    def get_label(self, dirpath, file, language):
+        results = {key: 0 for key in self.arch_styles}
+        if file.endswith(f".{self.extension}"):
+            file_path = os.path.join(dirpath, file)
+            res, all_found, max_key = self.calculate_label(file_path)
+            for key in self.arch_styles:
+                results[key] += res[key]
+            maxi_k, maxi_v = '', 0
+            for key in results:
+                if results[key] >= maxi_v:
+                    maxi_k = key
+                    maxi_v = results[key]
+            if maxi_v == 0:
+                is_service = self.search_str(file_path, self.default_expr)
+                if is_service: maxi_k = 'awsservice'
+                else: maxi_k = 'unlabeled'
+            self.save_label(file_path, maxi_k, language)

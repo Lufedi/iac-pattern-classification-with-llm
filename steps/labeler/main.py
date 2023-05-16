@@ -4,7 +4,12 @@ from factory.labeler_factory import LabelerFactory
 from factory.labelers.labeler import Labeler
 
 arch_styles = {
-    "java": {}}
+    "java": {},
+    "python": {},
+    "javascript": {},
+    "go": {},
+    "typescript": {}
+}
 
 def calculate_label(file_path: str):
     results = {}
@@ -40,6 +45,8 @@ def main():
         add_labels_by_functions(repos_path, language, labeler)
 
 def add_labels_by_functions(repos_path, language, labeler: Labeler):
+    if not os.path.exists(repos_path):
+        return
     current_repos = set(os.listdir(repos_path))
     for repo_name in current_repos:
         print(repos_path, repo_name)
